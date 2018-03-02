@@ -215,7 +215,7 @@ class FroxlorInstall
 	{
 		$data = $this->runInstall();
 		$content = "<table class=\"noborder\">";
-		$content .= $data['content']
+		$content .= $data['content'];
 		$content .= "</table>";
 		
 		// check if we have unrecoverable errors
