@@ -101,6 +101,16 @@ class FroxlorInstall
 	{
 		// send headers
 		$this->_sendHeaders();
+
+		$this->setUpEnvironment();
+		// show the action
+		$this->_showPage();
+	}
+	
+	/**
+	 * Set up environment
+	 */
+	protected function setUpEnvironment() {
 		// check if we have a valid installation already
 		$this->_checkUserdataFile();
 		// include the functions
@@ -109,8 +119,6 @@ class FroxlorInstall
 		require $this->_basepath . '/lib/tables.inc.php';
 		// include language
 		$this->_includeLanguageFile();
-		// show the action
-		$this->_showPage();
 	}
 
 	/**
@@ -205,8 +213,41 @@ class FroxlorInstall
 	 */
 	private function _doInstall()
 	{
+		$data = $this->runInstall();
 		$content = "<table class=\"noborder\">";
+		$content .= $data['content']
+		$content .= "</table>";
 		
+		// check if we have unrecoverable errors
+		if ($data['fail'] || $this->_abort) {
+			// D'oh
+			$navigation = '';
+			$msgcolor = 'red';
+			$message = $this->_lng['install']['testing_mysql_fail'];
+			$link = 'install.php?check=1';
+			$linktext = $this->_lng['click_here_to_goback'];
+		} else {
+			// all good
+			$navigation = '';
+			$msgcolor = 'green';
+			$message = $this->_lng['install']['froxlor_succ_installed'];
+			$link = '../index.php';
+			$linktext = $this->_lng['click_here_to_login'];
+		}
+		
+		eval("\$navigation .= \"" . $this->_getTemplate("pagebottom") . "\";");
+		
+		return array(
+			'pagecontent' => $content,
+			'pagenavigation' => $navigation
+		);
+	}
+
+	protected function runInstall() {
+		$content = '';
+		$fatal_fail = false;
+		$another_fail = false;
+
 		// check for mysql-root-connection
 		$content .= $this->_status_message('begin', $this->_lng['install']['testing_mysql']);
 		
@@ -272,31 +313,10 @@ class FroxlorInstall
 			}
 		}
 		
-		$content .= "</table>";
-		
-		// check if we have unrecoverable errors
-		if ($fatal_fail || $another_fail || $this->_abort) {
-			// D'oh
-			$navigation = '';
-			$msgcolor = 'red';
-			$message = $this->_lng['install']['testing_mysql_fail'];
-			$link = 'install.php?check=1';
-			$linktext = $this->_lng['click_here_to_goback'];
-		} else {
-			// all good
-			$navigation = '';
-			$msgcolor = 'green';
-			$message = $this->_lng['install']['froxlor_succ_installed'];
-			$link = '../index.php';
-			$linktext = $this->_lng['click_here_to_login'];
-		}
-		
-		eval("\$navigation .= \"" . $this->_getTemplate("pagebottom") . "\";");
-		
-		return array(
-			'pagecontent' => $content,
-			'pagenavigation' => $navigation
-		);
+		return [
+			'fail' => $fatal_fail || $another_fail,
+			'content' => $content,
+		];
 	}
 
 	/**
@@ -1102,12 +1122,16 @@ class FroxlorInstall
 			require $this->_basepath . '/lib/userdata.inc.php';
 			
 			if (isset($sql) && is_array($sql)) {
-				// use sparkle theme for the notice
-				$installed_hint = file_get_contents($this->_basepath . '/templates/Sparkle/misc/alreadyinstalledhint.tpl');
-				$installed_hint = str_replace("<CURRENT_YEAR>", date('Y', time()), $installed_hint);
-				die($installed_hint);
+				$this->dieBecauseInstalled();
 			}
 		}
+	}
+
+	protected function dieBecauseInstalled() {
+		// use sparkle theme for the notice
+		$installed_hint = file_get_contents($this->_basepath . '/templates/Sparkle/misc/alreadyinstalledhint.tpl');
+		$installed_hint = str_replace("<CURRENT_YEAR>", date('Y', time()), $installed_hint);
+		die($installed_hint);
 	}
 
 	/**
@@ -1181,7 +1205,7 @@ class FroxlorInstall
 	 *
 	 * @return string
 	 */
-	private function _status_message($case, $text)
+	protected function _status_message($case, $text)
 	{
 		if ($case == 'begin') {
 			return '<tr><td class="install-step">' . $text;
