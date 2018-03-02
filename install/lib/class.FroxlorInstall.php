@@ -60,7 +60,7 @@ class FroxlorInstall
 	 *
 	 * @var array
 	 */
-	private $_data = null;
+	protected $_data = null;
 
 	/**
 	 * supported languages for install
